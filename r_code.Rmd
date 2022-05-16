@@ -1,0 +1,557 @@
+---
+title: "Project"
+author: "Akshya Ramesh"
+date: "4/11/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Reading the data from local file
+
+```{r}
+data <- read.csv(file = "C:/Users/Akshya Ramesh/Desktop/Data Analyst/Project/water_potability.csv")
+head(data)
+```
+
+# Setting Potability as factor and checking for the summary of the dataset
+
+```{r}
+data$Potability <-as.factor(data$Potability)
+str(data)
+summary(data)
+dim(data)
+```
+# Checking for null values
+
+```{R}
+library(visdat)
+vis_miss(data, cluster=TRUE)
+```
+
+# Drop columns where at least two of these three coumns are NULL.
+
+```{R}
+data <-data[-which(is.na(data$ph) & is.na(data$Sulfate) & is.na(data$Trihalomethanes)),]
+
+data <-data[-which(is.na(data$ph) & is.na(data$Sulfate)),]
+
+data <-data[-which(is.na(data$Sulfate) & is.na(data$Trihalomethanes)),]
+
+data <-data[-which(is.na(data$ph) & is.na(data$Trihalomethanes)),]
+
+```
+
+```{r}
+vis_miss(data, cluster=TRUE)
+```
+
+# If only one column is NULL, replace it with average.
+
+```{r}
+data$ph[which(is.na(data$ph))] <- mean(data$ph,na.rm = TRUE)
+data$Sulfate[which(is.na(data$Sulfate))] <- mean(data$Sulfate,na.rm = TRUE)
+data$Trihalomethanes[which(is.na(data$Trihalomethanes))] <- mean(data$Trihalomethanes,na.rm = TRUE)
+```
+
+
+```{r}
+vis_miss(data, cluster=TRUE)
+```
+
+## Printing the dimension of the data
+
+```{r}
+dim(data)
+```
+## Summary of data after data cleaning
+
+```{R}
+summary(data)
+```
+
+## Data Visuilizations 
+
+```{r}
+library(ggplot2)
+ggplot(data, aes(Potability, ph, fill = Potability)) +  # Properly adding colors
+  geom_boxplot() + 
+  scale_fill_manual(values = c("Coral", "Turquoise"))
+```
+
+```{r}
+library(ggplot2)
+p2<- ggplot(data, aes(x=Sulfate, y=Hardness, col=Potability))+
+     geom_point()
+p2+geom_smooth(method = "loess")
+```
+
+```{r}
+library(dplyr)
+data %>%
+  ggplot(aes(x=ph,fill = Potability)) +
+  geom_histogram(alpha =0.8, color= 'lightblue')+
+  ggtitle("ph histogram based on Potability")
+```
+
+
+
+## Checking for class imbalance 
+
+```{r message=FALSE}
+library(dplyr)
+count_Potability = data %>% count(Potability, sort = TRUE)
+count_Potability
+```
+
+## Correlation 
+
+```{r}
+library(corrplot)
+numeric_col <- sapply(data, is.numeric)
+data_numeric <- data[, numeric_col]
+cor_val <- cor(data_numeric)
+corrplot(cor_val,method = 'shade', diag = FALSE,  col = COL1('Purples', 10), tl.col = "black", number.cex= .8, addCoef.col ='black')
+```
+
+```{r}
+values3 <- count_Potability$n
+names(values3) <- count_Potability$Potability
+pct <- round(values3/sum(values3)*100)
+labels1 <- paste0(round(100 * values3/sum(values3), 2), "%")
+pie(values3, labels = labels1, main = "Potability Imbalance", col = c("#e4717a", "steelblue4"))
+legend(.9, .1, names(values3), cex = 1.5, fill = c("#e4717a", "steelblue4"))
+```
+
+
+## Modeling with original dataset 
+
+```{r}
+library(TeachingDemos)
+set.seed(char2seed("group_split_sample"))
+sample <- sample.int(n = nrow(data), size = floor(.75*nrow(data)), replace = F)
+train <- data[sample, ]
+test  <- data[-sample, ]
+```
+
+
+# Evluation function
+
+
+```{R}
+eval <- function(CM){
+  TN =CM[2,2]
+  TP =CM[1,1]
+  FP =CM[1,2]
+  FN =CM[2,1]
+  precision =(TP)/(TP+FP)
+  recall_score =(TP)/(TP+FN)
+ 
+  f1_score=2*((precision*recall_score)/(precision+recall_score))
+  accuracy_model  =(TP+TN)/(TP+TN+FP+FN)
+  output <- list(f1_score,accuracy_model, precision, recall_score)
+}
+```
+
+## Logistic 
+
+```{r}
+LM <- glm(Potability ~.,family=binomial(link='logit'),data=train)
+summary(LM)
+```
+
+```{R}
+LM_pred <- predict(LM, test, type = "response")
+LM_prob <- ifelse(LM_pred >0.5, 1, 0)
+```
+
+## Confusion Matrix
+```{r}
+LM_CM = table(test$Potability, LM_prob, dnn = c("Predicted", "Actual"))
+LM_CM
+```
+
+## Evluation
+
+```{R}
+val1 = eval(LM_CM)
+print(paste("F1 score of the model: ",round(val1[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val1[[2]],3)))
+print(paste("Precision score of the model: ",round(val1[[3]],3)))
+print(paste("Recall score of the model: ",round(val1[[4]],3)))
+```
+
+# SVM
+
+```{R}
+library(e1071)
+svm = svm(formula = Potability ~ .,
+                 data = train,
+                 type = 'C-classification',
+                 kernel = 'linear')
+summary(svm)
+```
+## Evluation
+
+```{r, message = FALSE, warnings = FALSE}
+library(caret)
+pred_svm <- predict(svm,test)
+svm_CM = table(test$Potability, pred_svm, dnn = c("Predicted", "Actual"))
+svm_CM
+val_svm = eval(svm_CM)
+print(paste("F1 score of the model: ",round(val_svm[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_svm[[2]],3)))
+print(paste("Precision score of the model: ",round(val_svm[[3]],3)))
+print(paste("Recall score of the model: ",round(val_svm[[4]],3)))
+```
+
+## k-nearest-classifier
+
+```{R}
+library(class)
+acc <- list()
+
+for (i in 1:15) {
+  classifier_knn <- knn(train = train,
+                      test = test,
+                      cl = train$Potability,
+                      k = i)
+  acc[as.character(i)] = mean(classifier_knn == test$Potability)
+}
+x<-c(1:15)
+acc <- unlist(acc)
+plot(x,acc, type="b", xlab="K", ylab="Accuracy Rate")
+```
+
+From the above plot we can see that when k=15 we have the highest accuracy and it will perform 
+better on the data
+
+## KNN model with K=15
+
+```{r}
+knn_model <- knn(train = train,
+                      test = test,
+                      cl = train$Potability,
+                      k = 15)
+```
+
+## Evluation 
+
+```{r}
+knn_cm = table(test$Potability, knn_model, dnn = c("Predicted", "Actual"))
+knn_cm
+val_knn = eval(knn_cm)
+print(paste("F1 score of the model: ",round(val_knn[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_knn[[2]],3)))
+print(paste("Precision score of the model: ",round(val_knn[[3]],3)))
+print(paste("Recall score of the model: ",round(val_knn[[4]],3)))
+```
+
+## Random Forest
+
+```{R}
+library(randomForest)
+rf <- randomForest(Potability~., data=train, proximity=TRUE)
+summary(rf)
+```
+## Evluation 
+
+```{r, message = FALSE, warnings = FALSE}
+pred_rf <- predict(rf, test)
+rf_cm <- table(test$Potability, pred_rf, dnn = c("Predicted", "Actual"))
+rf_cm
+val_rf = eval(rf_cm)
+print(paste("F1 score of the model: ",round(val_rf[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_rf[[2]],3)))
+print(paste("Precision score of the model: ",round(val_rf[[3]],3)))
+print(paste("Recall score of the model: ",round(val_rf[[4]],3)))
+```
+
+## QDA
+
+```{R}
+library(MASS)
+model_QDA = qda(Potability~. , data = train)
+summary(model_QDA)
+```
+
+## Evluation 
+
+```{r}
+qda_pred = predict(model_QDA, newdata=test, type="response")
+qda_c = qda_pred$class
+qda_cm = table(qda_c, test$Potability, dnn = c("Predicted", "Actual"))
+qda_cm
+val_qda = eval(qda_cm)
+print(paste("F1 score of the model: ",round(val_qda[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_qda[[2]],3)))
+print(paste("Precision score of the model: ",round(val_qda[[3]],3)))
+print(paste("Recall score of the model: ",round(val_qda[[4]],3)))
+```
+
+
+
+## OVERSAMPLE
+
+```{R}
+library(ROSE)
+library(TeachingDemos)
+set.seed(char2seed("group_"))
+
+data_os <- ovun.sample(Potability~., data=data, 
+                                  p=0.5, 
+                                  method="over")$data
+```
+
+
+# Split oversampled data into training and testing
+
+```{r}
+set.seed(char2seed("group_split"))
+sample <- sample.int(n = nrow(data_os), size = floor(.75*nrow(data_os)), replace = F)
+train_os <- data_os[sample, ]
+test_os  <- data_os[-sample, ]
+```
+
+```{r}
+dim(train_os)
+dim(test_os)
+```
+
+## Distribution in training data
+
+```{r}
+train_Potability = train_os %>% count(Potability, sort = TRUE)
+train_Potability
+```
+## Distribution in test data
+
+```{r}
+test_Potability = test_os %>% count(Potability, sort = TRUE)
+test_Potability
+```
+
+# Modeling with oversampled data
+
+## Logistic 
+
+```{r}
+LM_os <- glm(Potability ~.,family=binomial(link='logit'),data=train_os)
+summary(LM_os)
+```
+
+```{R}
+LM_predict <- predict(LM_os, test_os, type = "response")
+LM_prob <- ifelse(LM_predict >0.5, 1, 0)
+```
+
+## Evluation 
+
+```{r}
+LM_OS_CM = table(test_os$Potability, LM_prob, dnn = c("Predicted", "Actual"))
+LM_OS_CM
+```
+
+```{R}
+val_lm_os = eval(LM_OS_CM)
+print(paste("F1 score of the model: ",round(val_lm_os[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_lm_os[[2]],3)))
+print(paste("Precision score of the model: ",round(val_lm_os[[3]],3)))
+print(paste("Recall score of the model: ",round(val_lm_os[[4]],3)))
+```
+
+# SVM
+
+```{R}
+library(e1071)
+svm_os = svm(formula = Potability ~ .,
+                 data = train_os,
+                 type = 'C-classification',
+                 kernel = 'linear')
+summary(svm_os)
+```
+
+## Evluation
+
+```{r, message = FALSE, warnings = FALSE}
+library(caret)
+pred_svm_os <- predict(svm_os,test_os)
+svm_os_CM = table(test_os$Potability, pred_svm_os, dnn = c("Predicted", "Actual"))
+svm_os_CM
+val_svm_os = eval(svm_os_CM)
+print(paste("F1 score of the model: ",round(val_svm_os[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_svm_os[[2]],3)))
+print(paste("Precision score of the model: ",round(val_svm_os[[3]],3)))
+print(paste("Recall score of the model: ",round(val_svm_os[[4]],3)))
+```
+
+## k-nearest-classifier
+
+```{R}
+library(class)
+acc <- list()
+
+for (i in 1:15) {
+  classifier_knn <- knn(train = train_os,
+                      test = test_os,
+                      cl = train_os$Potability,
+                      k = i)
+  acc[as.character(i)] = mean(classifier_knn == test_os$Potability)
+}
+x<-c(1:15)
+acc <- unlist(acc)
+plot(x,acc, type="b", xlab="K", ylab="Accuracy Rate")
+```
+
+From the above plot we can see that when k=1 we have the highest accuracy and it will perform 
+better on the data
+
+## KNN Model with K=1
+
+```{r}
+knn_model <- knn(train = train_os,
+                      test = test_os,
+                      cl = train_os$Potability,
+                      k = 1)
+```
+
+## Evluation
+
+```{r}
+knn_os_cm = table(test_os$Potability, knn_model, dnn = c("Predicted", "Actual"))
+knn_os_cm
+val_knn_os = eval(knn_os_cm)
+print(paste("F1 score of the model: ",round(val_knn_os[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_knn_os[[2]],3)))
+print(paste("Precision score of the model: ",round(val_knn_os[[3]],3)))
+print(paste("Recall score of the model: ",round(val_knn_os[[4]],3)))
+```
+
+## QDA
+
+```{R}
+library(MASS)
+model_QDA = qda(Potability~. , data = train_os)
+summary(model_QDA)
+```
+
+## Evluation 
+
+```{r}
+qda_pred = predict(model_QDA, newdata=test_os, type="response")
+qda_c = qda_pred$class
+qda_os_cm = table(qda_c, test_os$Potability, dnn = c("Predicted", "Actual"))
+qda_os_cm
+val_qda_os = eval(qda_os_cm)
+print(paste("F1 score of the model: ",round(val_qda_os[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_qda_os[[2]],3)))
+print(paste("Precision score of the model: ",round(val_qda_os[[3]],3)))
+print(paste("Recall score of the model: ",round(val_qda_os[[4]],3)))
+```
+
+
+## Random Forest
+
+```{R}
+library(randomForest)
+rf_os <- randomForest(Potability~., data=train_os, proximity=TRUE, importance=TRUE)
+summary(rf_os)
+```
+
+## Evluation 
+```{r, message = FALSE, warnings = FALSE}
+pred_rf <- predict(rf_os, test_os)
+logit_P <- ifelse(pred_rf > 0.5,1,0) # Probability check
+rf_os_cm <- table(test_os$Potability, pred_rf, dnn = c("Predicted", "Actual"))
+rf_os_cm
+val_rf_os = eval(rf_os_cm)
+print(paste("F1 score of the model: ",round(val_rf_os[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_rf_os[[2]],3)))
+print(paste("Precision score of the model: ",round(val_rf_os[[3]],3)))
+print(paste("Recall score of the model: ",round(val_rf_os[[4]],3)))
+```
+
+### Evluation Results
+
+```{r}
+est_values <- read.table(text="Score  Model Value
+                                 F1 RandomForest  0.839
+                                Accuracy  RandomForest  0.832
+                                Precision RandomForest  0.874
+                                Recall  RandomForest 0.806
+                                F1  QDA  0.684
+                                Accuracy  QDA 0.641
+                                Precision QDA  0.61
+                                Recall  QDA 0.779
+                                F1 knn  0.677
+                                Accuracy  knn  0.702
+                                Precision knn 0.623
+                                Recall  knn 0.74
+                                F1  svm  0.547
+                                Accuracy  svm 0.527
+                                Precision svm  0.572
+                                Recall  svm 0.524
+                                F1  Logistic  0.544
+                                Accuracy  Logistic 0.528
+                                Precision Logistic  0.564
+                                Recall  Logistic 0.526", header=T)
+```
+
+```{r}
+library(ggplot2)
+ggplot(est_values, aes(Model, Value, fill = Score)) + 
+  geom_bar(stat="identity", position = "dodge") +
+  ggtitle("Model Evluation") +
+  theme_dark() +
+  scale_fill_brewer(palette = "Set3")
+```
+
+
+## Feature Importance 
+
+
+```{r}
+#importance(rf_os)
+varImpPlot(rf_os)
+```
+
+## K-Fold Cross Validation for Random Forest
+
+```{r}
+library(TeachingDemos)
+set.seed(char2seed("group_cv"))
+trControl <- trainControl(method = "cv", number = 7, search = "random")
+rf_default <- train(Potability~ph+Hardness+Sulfate+Chloramines+Solids,
+    data = train_os,
+    method = "rf",
+    metric = "Accuracy",
+    trControl = trControl)
+print(rf_default)
+```
+
+## Evluation 
+
+```{r}
+prediction_cv<- predict(rf_default, newdata= test_os)
+rf_cv_cm = table(test_os$Potability, prediction_cv)
+rf_cv_cm
+val_rf_cv = eval(rf_cv_cm)
+print(paste("F1 score of the model: ",round(val_rf_cv[[1]],3)))
+print(paste("Accuracy score of the model: ",round(val_rf_cv[[2]],3)))
+print(paste("Precision score of the model: ",round(val_rf_cv[[3]],3)))
+print(paste("Recall score of the model: ",round(val_rf_cv[[4]],3)))
+```
+
+## Tree Plot
+
+```{R}
+library(rpart)
+tree_rf <- rpart(Potability~ph+Hardness+Sulfate+Chloramines+Solids, train_os, method = "class")
+```
+
+```{r}
+library(rpart.plot)
+rpart.plot(tree_rf, tweak = 2, extra=4)
+```
+
+
