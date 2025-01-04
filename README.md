@@ -1,7 +1,7 @@
 # Water-Potability-Prediction-
 
 ## Purpose:
-This work has been done by a team of four Palak Jain, Vijay Mittal, Akshya Ramesh, and Raj Zaveri as a final project for Data Analytics- H515 course in Spring 2022 at IUPUI.
+This work has been done by a team of four [Palak Jain](https://www.linkedin.com/in/palakjn/), [Vijay Mittal](https://www.linkedin.com/in/vjmittal/), Akshya Ramesh, and Raj Zaveri as a final project for Data Analytics- H515 course in Spring 2022 at Indiana University.
 
 ## Project Description :
 From the past few years, water quality has been degrading and threatened because of various pollutants, industrial waste, release of non-compostable materials and chemicals in the water bodies and many other human intervention and this in turn has led to lack of availability of clean water becoming a more and more serious problem.
