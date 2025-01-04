@@ -23,6 +23,11 @@ NOTE : Ensemble methods works well even if the data is imbalance.
 
 ## Comparison of different models
 Here is the comparison of different models for classfication.
-![model_performance](water_potability_performance.png)
+![model_performance](static/water_potability_performance.png)
 
-We can see that the random forest algorithm worked best to determine potability of water even if the data is unbalanced. In case of random forest, precision and recall, both were balanced and high for unbalanced data [table 1] as well as over sampled data [table 2]. On the top of that, it is a good practice to use cross validation techniques to deal with unbalanced data. So, we implemented k-fold cross validation for the random forest to verify our oversampling method. Precision and recall, both are nearly same for random forest with cross validation and without cross validation. So, we can conclude that our oversampling method has created a proper balance in the data and therefore, we have ’Random Forest with over sampled data’ as our final model with accuracy of 0.832, precision 0.874, recall 0.806 and f1 score of 0.839.
+We can see that the random forest algorithm worked best to determine potability of water even if the data is unbalanced. In case of random forest, precision and recall, both were balanced and high for unbalanced data [table 1] as well as over sampled data [table 2]. On the top of that, it is a good practice to use cross validation techniques to deal with unbalanced data. So, we implemented k-fold cross validation for the random forest to verify our oversampling method. Precision and recall, both are nearly same for random forest with cross validation and without cross validation. So, we can conclude that our oversampling method has created a proper balance in the data and therefore, we have ’Random Forest with over sampled data’ as our final model with accuracy of 0.832, precision 0.874, recall 0.806 and f1 score of 0.839. <br>
+
+
+[PPT Presentation](static/Data_Analytics_Project_Presentation.ppsx)
+
+
